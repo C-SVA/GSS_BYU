@@ -1,0 +1,161 @@
+---
+title: "GSS2023SurveyDemographics2"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+## Demographics
+
+## Gender
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(Gender)%>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  group_by(Gender, International)%>%
+  summarize(n())
+
+Vote.rank.analysis %>% distinct
+d1 <- Vote.rank.analysis %>%
+  ggplot(aes(x=Gender, fill=International))+
+  geom_bar()+
+  labs(title="Gender")+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))#+
+  #scale_fill_manual(values = c("No"="#F8766D", "Yes"="#619CFF", "NA"="#00BA38"))
+```
+
+## Marital Status
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(MaritalStatus)%>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  group_by(MaritalStatus, International)%>%
+  summarize(n())
+
+d2 <- Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(MaritalStatus), fill=International))+
+  geom_bar()+
+  labs(title = "Marital Status",
+       x="Marital Status")+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size=6.5, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))#+
+  #scale_fill_manual(values = c("No"="#F8766D", "Yes"="#619CFF", "NA"="#00BA38"))
+```
+
+## International
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(International)%>%
+  summarize(n())
+
+d3 <- Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(International), fill=International))+
+  geom_bar()+
+  labs(title = "International Status")+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))#+
+  #scale_fill_manual(values = c("No"="#F8766D", "Yes"="#619CFF", "NA"="#00BA38"))
+```
+
+## Age
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(Age) %>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  group_by(Age, International) %>%
+  summarize(n())
+
+d4 <- Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(Age), fill=International))+
+  geom_bar()+
+  labs(title = "Age",
+       x="Age")+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))#+
+ # scale_fill_manual(values = c("No"="#F8766D", "Yes"="#619CFF", "NA"="#00BA38"))
+```
+
+## Parents
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(Parent)%>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  group_by(Parent, International)%>%
+  summarize(n())
+
+d5 <- Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(Parent), fill=International))+
+  geom_bar()+
+  labs(title = "Parental Status",
+       x="Parental Status")+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))#+
+  #scale_fill_manual(values = c("No"="#F8766D", "Yes"="#619CFF", "NA"="#00BA38"))
+```
+
+## Year in school
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(Year) %>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  group_by(Year, International) %>%
+  summarize(n())
+
+d6 <- Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(Year), fill=International))+
+  geom_bar()+
+  labs(title = "Year in program",
+       x="Year in program")+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))#+
+  #scale_fill_manual(values = c("No"="#F8766D", "Yes"="#619CFF", "NA"="#00BA38"))
+```
+
+```{r}
+legend2 <- get_legend_35(
+  d1 + guides(color = guide_legend(nrow = 1)) + 
+    theme(legend.position = "bottom")
+)
+```
+
+## Summary
+
+```{r}
+g1 <- plot_grid(d1,d2,d3,d4,d5,d6, ncol = 2)
+plot_grid(g1,legend2, ncol=1, rel_heights = c(7,1))
+```

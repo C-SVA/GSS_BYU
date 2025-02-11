@@ -1,0 +1,203 @@
+---
+title: "GSSDataProcessing2"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+# Data
+
+```{r}
+Votes<-read_csv("GraduateStudentSocietImprovementSurvey2023_May10_2023_13.38.csv")
+
+Vote.rank <- Votes[18:ncol(Votes)] %>% 
+  mutate(Participant=row_number()) %>% 
+  dplyr::select(Participant, everything())
+#%>% dplyr::select(Finished, Q39_1, Q39_2, Q39_3, Q39_4, Q39_5, Q39_6, Q39_7, Q39_8, Q39_8, Q39_9, Q39_10, Q41, Q2, Q3_1, Q4, Q5_1, Q6_1, Q33, Q34, Q35, Q11, Q7, Q37, Q13, Q14, Q15, Q15_11_TEXT, Q16, Q18, Q19, Q30, Q20, Q21...57, Q21_3_TEXT, Q21...59 ,Q22, Q23, Q24, Q42)
+```
+
+## Wrangling
+
+```{r}
+cols <- Vote.rank[1,]
+Vote.rank <- Vote.rank[-c(1,2),] #Remove colnames, and {"ImportId":"finished"}
+colnames(Vote.rank) <- cols
+
+#Rename rank questions with the matter at hand
+i <- grep(".+most important.+", cols)
+issues <- str_extract(cols[i], pattern = ".+most important.+- (.+)", group = 1)
+colnames(Vote.rank)[i] <- issues
+issues <- issues[c(10,1:9)] #Reorder issues so that base level is Other
+```
+
+## Rename explanatory variables and take care of NA
+
+```{r}
+Vote.rank <- Vote.rank %>% 
+  rename(OtherRankConcerns = `From the previous question, what is your "Other" concern for Grad Students, if any?`,
+         ChildcareHourPerWeek = `How many hours a week, on average, does your child(ren) attend childcare? - Hours/Week from 0 to 50+`,
+         ChildcareRate = `How much are you spending per hour on childcare? - $/hour for childcare`,
+         ChildcareSatisfaction = `How satisfied are you with your current childcare system?`,
+         ChildcareComments = `Is there anything you would like BYU Graduate Studies to know about childcare for graduate students?`,
+         BYUHealthInsurance = `Have you been enrolled or are you currently enrolled in BYU's DMBA insurance plan available for students (often referred to as \"BYU's Student Health Insurance\")?`,
+         BYUHealthcareSatisfaction = `Do you feel the BYU Healthplan meets your healthcare needs?`,
+         BYUHealthcareComments = `If you have any additional comments you would like to share regarding the BYU Student Health Plan, please share:`,
+         SupportGroup = `Are you interested in grad student support groups?`,
+         SupportGroupLeader = `Would you prefer a professional to lead this support group or a fellow graduate student?`,
+         SupportGroupAreas = `What kind of support group would you be interested in? - Selected Choice`,
+         SupportGroupOther = `What kind of support group would you be interested in? - Other: - Text`,
+         SupportGroupCurrentInvolvement = `Are you currently involved with any support groups at BYU?`,
+         Department = `What masters/PhD department are you in?`,
+         Parent = `Do you have any children?`, 
+         NumChildren = `How many children do you have? - Number of children from 0 to 5+`,
+         ChildcarePresent= `Does your child(ren) currently attend a childcare program? (This could be with an official daycare or help by a family member)`,
+         Year = `How many years have you been enrolled at BYU?`,
+         Degree =  `Degree currently pursuing: - Selected Choice`,
+         International = `Are you an international student?`,
+         MaritalStatus = `Current marital status`,
+         StudentSpouse = `Is your spouse also a student? (any degree, at any university)`,
+         WorkStatus = `What is your working status? - Selected Choice`,
+         Participant = `1`,
+         AnythingElse = `Are there any final concerns (or positive experiences) you would like Grad Studies to know about? (can be left blank)`)
+```
+
+```{r}
+#Vote rank demographics includes all the NA responses
+Vote.rank.original <- Vote.rank %>%   
+  replace.na.val(NumChildren, "0")
+
+Vote.rank.original$SupportGroupLeader <- na_if(Vote.rank.original$SupportGroupLeader, "N/A")
+```
+
+```{r}
+#life.science <- c("Biology", "Cell Biology and Physiology", 
+                  # "Exercise Science", "Microbiology and Molecular Biology", 
+                  # "Neuroscience", "Nutrition, Dietetics and Food Science", 
+                  # "Public Health", "Plant and Wildlife Sciences", "Life Sciences")
+
+CELL <- c("Cell","Cell Biology", "Cell Biology and Physiology")
+i <- Vote.rank.original$Department %in% CELL
+Vote.rank.original$Department[i] <- "Cell Biology and Physiology"
+
+ES <- c("Exercise Physiology", "Exercise Science")
+i <- Vote.rank.original$Department %in% ES
+Vote.rank.original$Department[i] <- "Exercise Science"
+
+MMBIO <- c("MMBIO", "MMBio", "Microbiology & Molecular Biology", "Microbiology and Molecular Biology", "Microbiology and molecular biology", "Mmbio", "Molecular and Microbiology")
+i <- Vote.rank.original$Department %in% MMBIO
+Vote.rank.original$Department[i] <- "Microbiology and Molecular Biology"
+
+NEURO <- c("Neuroscience")
+i <- Vote.rank.original$Department %in% NEURO
+Vote.rank.original$Department[i] <- "Neuroscience"
+
+NDSF <- c("NDFS", "NDFS Life sciences", "Nutrition, Dietetics, and Food Science", "Nutritional Science", "Nutritional, dietetics and food Science" )
+i <- Vote.rank.original$Department %in% NDSF
+Vote.rank.original$Department[i] <- "Nutrition, Dietetics and Food Science"
+
+MPH <- c("Public Health", "Master of Public Health", "Masters of Public Health")
+i <- Vote.rank.original$Department %in% MPH
+Vote.rank.original$Department[i] <- "Public Health"
+
+PWS <- c("PWS", "Plant and Wildlife Science", "Plant and Wildlife Sciences", "Plant and wildlife sciences")
+i <- Vote.rank.original$Department %in% PWS
+Vote.rank.original$Department[i] <- "Plant and Wildlife Sciences"
+
+LS <- c("Life Sciences", "Life sciences")
+i <- Vote.rank.original$Department %in% LS
+Vote.rank.original$Department[i] <- "Life Sciences"
+
+Vote.rank.original %>% distinct(Department) %>% filter(grepl("^[L|l].+", Department)) %>% arrange(Department)
+```
+
+# Filter by department
+
+```{r}
+Vote.rank.original.interest <- Vote.rank.original
+```
+
+```{r}
+#Vote rnnk does not filter out by those who did not rank issues
+Vote.rank.analysis <- Vote.rank.original.interest
+
+secondPyear <- c("2","3","4","5","6")
+i <- Vote.rank.analysis$Year %in% secondPyear
+Vote.rank.analysis$Year[i] <- "2-6"
+
+seventhPyear <- c("7+")
+i <- Vote.rank.analysis$Year %in% seventhPyear
+Vote.rank.analysis$Year[i] <- "7+"
+
+age20.39 <- c("20-29","30-39")
+i <- Vote.rank.analysis$Age %in% age20.39
+Vote.rank.analysis$Age[i] <- "20-39"
+
+age40p <- c("40-49","50+")
+i <- Vote.rank.analysis$Age %in% age40p
+Vote.rank.analysis$Age[i] <- "40+"
+
+divorced.separated <- c("Divorced","Separated")
+i <- Vote.rank.analysis$MaritalStatus %in% divorced.separated
+Vote.rank.analysis$MaritalStatus[i] <- "Divorced/Separated"
+```
+
+## Categorizing
+
+```{r}
+Vote.rank.analysis.interest <- Vote.rank.analysis %>%
+  replace.na.val(Parent, "No") %>%
+  replace.na.val(International, "No")
+```
+
+## Weighting
+
+```{r}
+weighted.votes <- Vote.rank.analysis.interest %>% tidy.issues() %>% weight.vote.ranks() %>% 
+  dplyr::select(Participant, Issues, Value, Borda, WeightExp, WeightInv, everything())
+```
+
+## Categorize
+
+```{r}
+measures <- c("Value", "Borda", "WeightInv")
+demographics <- c("Parent", "Age", "Gender", "Year", "International", "MaritalStatus")
+
+weighted.votes.cat <- weighted.votes %>%
+  dplyr::select(Participant, Issues, measures, demographics) %>%
+  mutate(MaritalStatus = paste0("MaritalStatus",MaritalStatus),
+         International = paste0("International",International),
+         Parent = paste0("Parent",Parent),
+         Age = paste0("Age", Age),
+         Gender = paste0("Gender",Gender),
+         Year = paste0("Year",Year)) %>%
+  mutate(Cat1 = paste0(MaritalStatus,":",International),
+         Cat2 = paste0(Parent,":",International),
+         Cat3 = Age,
+         Cat4 = Gender,
+         Cat5 = paste0(Year,":",International)) %>%
+  pivot_longer(c(Cat1,Cat2,Cat3,Cat4,Cat5), 
+               names_to = "Dummy vars", values_to = "Category") 
+
+categories.interest <- c("Age40+", "GenderFemale", "GenderMale", "GenderPrefer not to say" , "MaritalStatusDivorced/Separated:InternationalNo", "MaritalStatusDivorced/Separated:InternationalYes", "MaritalStatusMarried:InternationalNo", "MaritalStatusMarried:InternationalYes", "MaritalStatusNever married:InternationalNo", "MaritalStatusNever married:InternationalYes", "ParentNo:InternationalNo", "ParentNo:InternationalYes", "ParentYes:InternationalNo", "ParentYes:InternationalYes", "Year1:InternationalNo", "Year1:InternationalYes")
+
+#This is for the abstract figure
+weighted.votes.cat.interest <- weighted.votes.cat %>% 
+  filter(Category %in% categories.interest)
+
+#Divorced regardless of international status
+i <- grepl(".+Divorced.+", weighted.votes.cat.interest$Category) 
+weighted.votes.cat.interest[i,"Category"] <- "MaritalStatusDivorced/Separated"
+
+weighted.votes.cat.interest <- weighted.votes.cat.interest %>%
+  mutate(Join = paste0(Issues,":",Category))
+```
+
+## Defined factors
+
+```{r}
+cols <- c("Issues","Parent","SupportGroup","NumChildren","ChildcarePresent","Age","Gender","Year",
+          "Degree","International","MaritalStatus","StudentSpouse","WorkStatus")
+weighted.votes[,cols] <- lapply(weighted.votes[,cols], factor)
+#weighted.votes$Issues <- factor(weighted.votes$Issues, levels = issues) #Here I am reodering the issues levels.
+weighted.votes$Issues <- factor(weighted.votes$Issues)
+```

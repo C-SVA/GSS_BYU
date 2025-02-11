@@ -1,0 +1,437 @@
+---
+title: "GSS2023SurveyMeanRank"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+Corresponds with GSSProcessingFunctions6
+
+# General
+
+```{r}
+filtered.dat <- weighted.votes 
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "General Graduate Students")
+summary
+```
+
+# Age 40+
+
+```{r}
+filtered.dat <- weighted.votes %>% filter(Age %in% c("40+"))
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.Age40+` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "40+")
+summary
+```
+
+# Gender
+
+## Prefer not to say
+
+```{r}
+filtered.dat <- weighted.votes %>% filter(Gender == "Prefer not to say")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.GenderPrefer not to say` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Prefer not to say gender")
+```
+
+## Female
+
+```{r}
+filtered.dat <- weighted.votes %>% filter(Gender == "Female")
+test <- weighted.votes %>% filter(Gender == "Female")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+summary.GenderFemale <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Female Students")
+```
+
+## Male
+
+```{r}
+filtered.dat <- weighted.votes %>% filter(Gender == "Male")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+summary.GenderMale <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Male Students")
+```
+
+# Marital Status
+
+## Married
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+  filter(International %in% c(NA, "No") & 
+           MaritalStatus == "Married")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.MaritalStatusMarried:InternationalNo` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Married: International No")
+```
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+ filter(International == "Yes" & 
+          MaritalStatus == "Married")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.MaritalStatusMarried:InternationalYes` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Married International")
+```
+
+## Never married
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+  filter(International %in% c(NA, "No") & 
+           MaritalStatus == "Never married")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.MaritalStatusNever married:InternationalNo` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Never married: International No")
+```
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+ filter(International == "Yes" & MaritalStatus == "Never married")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.MaritalStatusNever married:InternationalYes` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Never married International")
+```
+
+## Divorced/Separated
+
+```{r}
+filtered.dat <- weighted.votes %>% filter(MaritalStatus == "Divorced/Separated")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.MaritalStatusDivorced/Separated` <- summary 
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Divorced or Separated")
+```
+
+# Parent
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+ filter(Parent == "Yes",
+         International == "No")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.ParentYes:InternationalNo` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Parent Local")
+```
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+ filter(Parent == "Yes",
+         International == "Yes")
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.ParentYes:InternationalYes` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "Parent International")
+```
+
+# Year 1
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+  filter(Year == "1" & 
+           International == "No") 
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.Year1:InternationalNo` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "First year local students")
+```
+
+```{r}
+filtered.dat <- weighted.votes %>% 
+  filter(Year == "1" & 
+           International == "Yes") 
+summary <- filtered.dat %>% summarize.vote.ranks(ExpectedRankScore)
+`summary.Year1:InternationalYes` <- summary
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, ExpectedRankScore)
+ridge.plot(top.results, "First year international")
+```
+
+# Top concerns
+
+```{r message=FALSE}
+joint.summary <- join.summary.tables()
+top.joint <- joint.summary %>% pick.end(n = 3, type = "top", SummaryRank)
+```
+
+```{r}
+joint.summary.meanRank <- joint.summary %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") %>%
+  dplyr::select(Issues, SummaryRank, ExpectedRank) %>%
+  arrange(Issues)
+```
+
+## Top 3 Concerns
+
+```{r}
+top.joint$SummaryRank <- factor(top.joint$SummaryRank)
+
+top.joint %>% 
+  ggplot(aes(x = forcats::fct_infreq(Issues), fill=Category, color=SummaryRank))+
+  geom_bar(size=0.6)+
+  scale_color_manual(values = c("1"="black", "2"="blue", "3"="ivory", "4"="pink"))+
+  labs(title = "Top 3 concerns across groups", x = "Concerns")+
+  theme_bw()+
+  guides(fill = guide_legend(order = 1), color = guide_legend(order = 2)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_text(size=5.5),
+        legend.key.size = unit(3.5, "mm"),
+        legend.box.just = "top",
+        legend.justification = c(0,1)) #box.just can be top, bottom, left, right
+```
+
+```{r}
+top.joint %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Average score (Top 3 concerns across groups)")+
+  theme(axis.text.y.left = element_text(size = 6, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+## Top in lower ranks
+
+```{r}
+joint.summary %>%
+  filter(ExpectedRankScore >= min(top.joint$ExpectedRankScore) & 
+           !SummaryRank %in% c(1,2,3)) %>%
+  ggplot(aes(x = forcats::fct_infreq(Issues), fill=Category, color=SummaryRank))+
+  geom_bar(size=0.6)+
+  labs(title = "Concerns with top scores in lower ranks", x = "Concerns")+
+  theme_bw()+
+  guides(fill = guide_legend(order = 1), color = guide_legend(order = 2)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_text(size=5.5),
+        legend.key.size = unit(3.5, "mm"),
+        legend.box.just = "top",
+        legend.justification = c(0,0.5)) #box.just can be top, bottom, left, right
+```
+
+```{r}
+joint.summary %>%
+  filter(ExpectedRankScore >= min(top.joint$ExpectedRankScore) & 
+           !SummaryRank %in% c(1,2,3)) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Average score (Top scores in lower ranks)")+
+  guides(color = guide_legend(order = 2), size = guide_legend(order = 1))+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+joint.summary %>%
+  filter(ExpectedRankScore >= min(top.joint$ExpectedRankScore) & 
+           !SummaryRank %in% c(1,2,3)) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, ExpectedRankScore, everything())
+```
+
+## Top (rank independent)
+
+```{r}
+joint.summary %>% 
+  mutate(SummaryRank = as.character(SummaryRank)) %>%
+  filter(ExpectedRankScore >= min(top.joint$ExpectedRankScore)) %>%
+  ggplot(aes(x = forcats::fct_infreq(Issues), fill=Category, color=SummaryRank))+
+  geom_bar(size=0.6)+
+  labs(title = "Top concerns across groups", x = "Concerns")+
+  scale_color_manual(values = c("1"="black", "2"="blue", "3"="ivory", "4"="pink"))+
+  theme_bw()+
+  guides(fill = guide_legend(order = 1), color = guide_legend(order = 2)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_text(size=5.5),
+        legend.key.size = unit(3.5, "mm"),
+        legend.box.just = "top",
+        legend.justification = c(0,1)) #box.just can be top, bottom, left, right
+```
+
+```{r}
+joint.summary %>%
+  filter(ExpectedRankScore >= min(top.joint$ExpectedRankScore)) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Average score (Top scores across groups)")+
+  theme(axis.text.y.left = element_text(size = 5.8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+# Summary by demography
+
+## Funding
+
+```{r}
+c1 <- joint.summary %>%
+  filter(Issues == "Funding") %>%
+  calculate.t.score(ExpectedRankScore) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") 
+
+c1 %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Funding mean rank score across demographic")+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+c1 %>%
+  filter(abs(`T-Score`) > 4) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, `T-Score`)
+```
+
+## Finance
+
+```{r}
+c2 <- joint.summary %>%
+  filter(Issues == "Finance") %>%
+  calculate.t.score(ExpectedRankScore) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") 
+
+c2 %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Finance mean rank score across demographic")+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+unique(c2$SummaryRank)
+```
+
+```{r}
+c2 %>%
+  filter(abs(`T-Score`) > 4) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, `T-Score`)
+```
+
+## Mentoring/Advisor
+
+```{r}
+c3 <- joint.summary %>%
+  filter(Issues == "Mentoring/Advisor") %>%
+  calculate.t.score(ExpectedRankScore) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") 
+
+c3 %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Mentoring/Advisor mean rank score across demographic")+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+unique(c3$SummaryRank)
+```
+
+```{r}
+c3  %>%
+  dplyr::select(Issues, ExpectedRankScore, `T-Score`, everything()) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  calculate.t.score(ExpectedRankScore)
+```
+
+```{r}
+c3 %>%
+  filter(abs(`T-Score`) > 4) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, `T-Score`)
+```
+
+## Mental Health
+
+```{r}
+c4 <- joint.summary %>%
+  filter(Issues == "Mental Health") %>%
+  calculate.t.score(ExpectedRankScore) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") 
+
+c4 %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Mental Health mean rank score across demographic")+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+c4 %>%
+  filter(abs(`T-Score`) > 4) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, `T-Score`, SummaryRank)
+```
+
+## Childcare/Daycare
+
+```{r}
+c5 <- joint.summary %>%
+  filter(Issues == "Childcare/Daycare") %>%
+  calculate.t.score(ExpectedRankScore) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") 
+
+c5 %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Childcare/Daycare mean rank score across demographic")+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+c5 %>%
+  filter(abs(`T-Score`) > 4) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, `T-Score`, SummaryRank)
+```
+
+## Healthcare Insurance
+
+```{r}
+c6 <- joint.summary %>%
+  filter(Issues == "Healthcare Insurance") %>%
+  calculate.t.score(ExpectedRankScore) %>%
+  unite(col = "Issues", c(Issues, Category), sep = ":") 
+
+c6 %>%
+  dot.plot(ExpectedRankScore)+
+  labs(title = "Healthcare Insurance mean rank score across demographic")+
+  theme(axis.text.y.left = element_text(size = 8, face = "bold"), 
+        plot.title.position = "plot")
+```
+
+```{r}
+c6 %>%
+  filter(abs(`T-Score`) > 4) %>%
+  arrange(desc(ExpectedRankScore)) %>%
+  dplyr::select(Issues, `T-Score`, SummaryRank)
+```

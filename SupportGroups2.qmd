@@ -1,0 +1,182 @@
+---
+title: "Graduate Student support groups"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+# Support Groups
+
+```{r}
+Vote.rank.analysis %>% group_by(SupportGroup, International) %>% summarize(count =n())
+Vote.rank.original %>% group_by(SupportGroup) %>% summarize(count =n())
+```
+
+## By Gender
+
+```{r}
+Vote.rank.analysis %>%
+  ggplot(aes(x=SupportGroup, fill=Gender))+
+  geom_bar()+
+  labs(title="Support group interest by Gender")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))+
+  scale_fill_manual(values = c("Female"="#F8766D", "Male"="#619CFF", "Prefer not to say"="#00BA38"))
+```
+
+## By Marital Status
+
+```{r}
+Vote.rank %>%
+  group_by(MaritalStatus)%>%
+  summarize(n())
+
+Vote.rank %>%
+  group_by(MaritalStatus, International)%>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  ggplot(aes(x=SupportGroup, fill=MaritalStatus))+
+  geom_bar()+
+  labs(title="Support group interest by Gender")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))
+```
+
+## By International Status
+
+```{r}
+Vote.rank %>%
+  group_by(International)%>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  ggplot(aes(x=SupportGroup, fill=International))+
+  geom_bar()+
+  labs(title="Support group interest by International Status")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size=10, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 14, face = "bold"))
+```
+
+## By Parental status
+
+```{r}
+Vote.rank %>%
+  group_by(Parent)%>%
+  summarize(n())
+
+Vote.rank %>%
+  group_by(Parent, International)%>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  ggplot(aes(x=SupportGroup, fill=Parent))+
+  geom_bar()+
+  labs(title="Support group interest by Parental Status")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))
+```
+
+## By Year in school
+
+```{r}
+Vote.rank %>%
+  group_by(Year) %>%
+  summarize(n())
+
+Vote.rank %>%
+  group_by(Year, International) %>%
+  summarize(n())
+
+Vote.rank.analysis %>%
+  ggplot(aes(x=SupportGroup, fill=Year))+
+  geom_bar()+
+  labs(title="Support group interest by Year")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size=7, angle = 0),
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 10, face = "bold"))
+```
+
+## Current Involvement
+
+```{r}
+Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(SupportGroup), fill=SupportGroupCurrentInvolvement))+
+  geom_bar()+
+  labs(title="Support group interest and involvement", 
+       x = "Support Group Interest", fill = "Current Involvement")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+        plot.title = element_text(size = 14, face = "bold"))
+```
+
+# Support group Areas of interest
+
+```{r}
+Vote.rank.analysis %>% 
+  separate.iter(SupportGroupAreas, sep = ",") %>%
+  pivot_longer(c(SupportGroupAreas, SupportGroupAreas1, SupportGroupAreas2, SupportGroupAreas3, SupportGroupAreas4, SupportGroupAreas5, SupportGroupAreas6, SupportGroupAreas7, SupportGroupAreas8, SupportGroupAreas9), names_to = "DummyCat", values_to = "SupportGroupAreas") %>%
+  filter(!is.na(SupportGroupAreas)) %>%
+  ggplot(aes(x=forcats::fct_infreq(SupportGroupAreas), fill=SupportGroupLeader))+
+  geom_bar()+
+  labs(title="Support group areas of interest", x = "Support Group Areas", 
+       fill = "Desired support group leader")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+        plot.title = element_text(size = 14, face = "bold"),
+        legend.position = "bottom")
+```
+
+```{r}
+total <- sum(Vote.rank.original$SupportGroup == "Yes", na.rm = TRUE)
+Vote.rank.analysis %>% 
+  separate.iter(SupportGroupAreas, sep = ",") %>%
+  pivot_longer(c(SupportGroupAreas, SupportGroupAreas1, SupportGroupAreas2, SupportGroupAreas3, SupportGroupAreas4, SupportGroupAreas5, SupportGroupAreas6, SupportGroupAreas7, SupportGroupAreas8, SupportGroupAreas9), names_to = "DummyCat", values_to = "SupportGroupAreas") %>%
+  filter(!is.na(SupportGroupAreas)) %>%
+  dplyr::select(SupportGroupAreas, International) %>%
+  group_by(SupportGroupAreas) %>%
+  summarize(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  mutate(Percent = Count/total)
+```
+
+## Current involvement
+
+```{r}
+Vote.rank.analysis %>%
+  ggplot(aes(x=forcats::fct_infreq(SupportGroupCurrentInvolvement), fill=SupportGroup))+
+  geom_bar()+
+  labs(title="Support group current Involvement and Interest", x = "Support Group Involvement", fill = "Support Group Interest")+
+  theme_bw()+
+  theme(axis.text.x = element_text(size = 7, angle = 0, hjust = 1),
+        plot.title = element_text(size = 12, face = "bold"))
+```
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(SupportGroupCurrentInvolvement, SupportGroup) %>%
+  summarize(Count = n())
+```
+
+```{r}
+Vote.rank.analysis %>%
+  group_by(SupportGroupCurrentInvolvement, SupportGroup) %>%
+  summarize(Count = n()) %>%
+  ggplot(aes(x = SupportGroup, y = SupportGroupCurrentInvolvement, size = Count))+
+  geom_point()+
+  labs(title="Support group interest and involvement", 
+       x = "Support Group Interest", y= "Support Group Involvement", fill = "Current Involvement")+
+  theme_bw()+
+  scale_size(range = c(5, 20))+
+  theme(axis.text.x = element_text(size = 7, angle = 0, hjust = 1),
+        plot.title = element_text(size = 14, face = "bold"))
+```

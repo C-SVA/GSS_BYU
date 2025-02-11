@@ -1,0 +1,361 @@
+---
+title: "GSS2023SurveyChildcare"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+# Childcare Satisfaction
+
+```{r}
+childcare.parents <- weighted.votes %>% 
+  filter(!is.na(ChildcareSatisfaction) & Issues == "Childcare/Daycare" & Parent == "Yes") %>%
+  pivot_wider(names_from = Issues, values_from = Value)
+
+parents <- weighted.votes %>% 
+  filter(Parent == "Yes" & Issues == "Childcare/Daycare") %>%
+  pivot_wider(names_from = Issues, values_from = Value) %>%
+  group_by(International) %>%
+  summarize(Total.Parents=n())
+  
+childcare.parents %>%
+  group_by(International) %>%
+  summarize(Childcare.Response = n()) %>%
+  left_join(parents, by = "International") %>%
+  mutate(ResponseRate = Childcare.Response/Total.Parents)
+```
+
+## By Year
+
+### International
+
+```{r}
+childcare.parent.international <- weighted.votes %>% 
+  filter(Parent == "Yes" & ChildcarePresent == "Yes" & International == "Yes" & Issues == "Childcare/Daycare") %>% 
+  pivot_wider(names_from = Issues, values_from = Value)
+
+childcare.parent.international %>% 
+	ggplot(aes(x = forcats::fct_infreq(ChildcareSatisfaction), fill = Year)) + 
+	geom_bar(stat = 'count') + 
+  labs(title = "Childcare satisfaction (International yes)", x="Childcare Satisfaction")+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+childcare.parent.international %>%
+  mutate(SatisfactionSentiment = 
+           ifelse(ChildcareSatisfaction == 	"Neither satisfied nor dissatisfied", "Neutral", 
+           ifelse(ChildcareSatisfaction %in% c("Extremely satisfied", "Somewhat satisfied"),
+                  "Positive", "Negative"))) %>%
+  group_by(SatisfactionSentiment) %>%
+  summarize(Count = n()) %>%
+  mutate(Rate = Count/sum(Count))
+```
+
+### International No
+
+```{r}
+childcare.parent.internationalNo <- weighted.votes %>% 
+  filter(Parent == "Yes" & ChildcarePresent == "Yes" & International %in% c("No", "NA") & Issues == "Childcare/Daycare") %>% 
+  pivot_wider(names_from = Issues, values_from = Value)
+
+
+childcare.parent.internationalNo %>% 
+	ggplot(aes(forcats::fct_infreq(ChildcareSatisfaction), fill = Year)) + 
+	geom_bar(stat = 'count') + 
+  labs(title = "Childcare satisfaction (International no)", x="Childcare Satisfaction")+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+childcare.parent.internationalNo %>%
+  mutate(SatisfactionSentiment = 
+           ifelse(ChildcareSatisfaction == 	"Neither satisfied nor dissatisfied", "Neutral", 
+           ifelse(ChildcareSatisfaction %in% c("Extremely satisfied", "Somewhat satisfied"),
+                  "Positive", "Negative"))) %>%
+  group_by(SatisfactionSentiment) %>%
+  summarize(Count = n()) %>%
+  mutate(Rate = Count/sum(Count))
+```
+
+## By Children
+
+### International
+
+```{r}
+childcare.parent.international %>% 
+	ggplot(aes(x = forcats::fct_infreq(ChildcareSatisfaction), fill = NumChildren)) + 
+	geom_bar(stat = 'count') + 
+  labs(title = "Childcare satisfaction (International yes)", x="Childcare Satisfaction")+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### International No
+
+```{r}
+childcare.parent.internationalNo %>% 
+	ggplot(aes(forcats::fct_infreq(ChildcareSatisfaction), fill = NumChildren)) + 
+	geom_bar(stat = 'count') + 
+  labs(title = "Childcare satisfaction (International no)", x="Childcare Satisfaction")+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Childcare comments
+
+```{r}
+comments <- Vote.rank.analysis %>% 
+  filter(!is.na(ChildcareComments))
+```
+
+```{r}
+commentsCat <- read_csv("ChildcareCommentsCategory.csv")
+
+comments.summary <- comments %>% 
+  left_join(commentsCat, by = "ChildcareComments") %>%
+  pivot_longer(c(Category, Category2, Category3, Category4, Category5, Category6), 
+               names_to = "CatDummyVar", values_to = "ChildcareCommentCategory") %>%
+  dplyr::select(Participant, ChildcareComments, ChildcareCommentCategory, everything()) %>%
+  filter(!is.na(ChildcareCommentCategory)) %>%
+    filter(ChildcareCommentCategory != "No")  
+```
+
+## Comment demographics
+
+```{r}
+comments.analyzed <- comments.summary %>% group_by(Participant) %>% 
+  summarize(Count = n())
+
+comments.analyzed.features <- comments.analyzed %>% 
+  left_join(Vote.rank.analysis, by = "Participant")
+
+comments.analyzed.features %>% nrow()
+
+comments.analyzed.features %>%
+  group_by(International, Parent) %>%
+  summarize(count = n())
+
+comments.analyzed.features%>%
+  group_by(International) %>%
+  summarize(count = n())
+
+comments.analyzed.features %>%
+  group_by(Parent) %>%
+  summarize(count = n())
+```
+
+## Results
+
+```{r}
+comments.summary %>% 
+  group_by(ChildcareCommentCategory) %>%
+  summarize(Count = n()) %>%
+  arrange(desc(Count))
+```
+
+```{r}
+comments.summary %>%
+  ggplot(aes(x = forcats::fct_infreq(ChildcareCommentCategory), fill = Parent))+
+	geom_bar(stat = 'count') + 
+  labs(title = "Recurrent childcare comments", x="Category")+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Rankings
+
+```{r}
+filtered.dat <- comments.summary %>% 
+  filter(ChildcareCommentCategory == "Availability (+)") %>%
+  tidy.issues() %>% weight.vote.ranks() %>%
+  dplyr::select(Participant, Issues, Value, Borda, WeightInv, everything())
+summary <- filtered.dat %>% summarize.vote.ranks(AverageMeanReciprocalRankScore)
+top.results <- summarize.top.n.ranks(summary, filtered.dat)
+dot.plot(summary, AverageMeanReciprocalRankScore)
+ridge.plot(top.results, "Availability +")
+```
+
+# Childcare details
+
+## Childcare Rate
+
+```{r}
+childcare.rate <- Vote.rank.analysis %>% 
+  filter(!is.na(ChildcareRate) & ChildcareRate != 0) %>%
+  mutate(ChildcareRate = as.numeric(ChildcareRate))
+  
+childcare.rate %>% nrow()
+```
+
+```{r}
+childcare.rate %>%
+  ggplot(aes(ChildcareRate))+
+  geom_histogram(binwidth = 1, color = "black")+
+  labs(title = "2023 Childcare Hourly rate", x="Dollar amount per hour", y = "count")+
+  geom_vline(xintercept = mean(childcare.rate$ChildcareRate),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.rate$ChildcareRate) * 1.7,
+           y = mean(childcare.rate$ChildcareRate) * 1.7,
+           label = paste("Mean =", round(mean(childcare.rate$ChildcareRate),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+```
+
+## Hours per week
+
+```{r}
+childcare.hours <- Vote.rank.analysis %>% 
+  filter(!is.na(ChildcareHourPerWeek) & ChildcareHourPerWeek != 0) %>%
+  mutate(ChildcareHourPerWeek = as.numeric(ChildcareHourPerWeek))
+
+childcare.hours %>% distinct(Participant) %>% nrow()
+  
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek))+
+  geom_histogram(binwidth =  1, color = "black")+
+  labs(title = "2023 Childcare Hours per week", x="Hours per week", y="count")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek)*1.4,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+```
+
+```         
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek, fill = StudentSpouse))+
+  geom_bar()+
+  labs(title = "2023 Childcare Hours per week", x="Hours")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek) * 1.5,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek, fill = International))+
+  geom_bar()+
+  labs(title = "2023 Childcare Hours per week", x="Hours")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek) * 1.5,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+  
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek, fill = MaritalStatus))+
+  geom_bar()+
+  labs(title = "2023 Childcare Hours per week", x="Hours")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek) * 1.5,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+  
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek, fill = ChildcareSatisfaction))+
+  geom_bar()+
+  labs(title = "2023 Childcare Hours per week", x="Hours")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek) * 1.6,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+  
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek, fill = Age))+
+  geom_bar()+
+  labs(title = "2023 Childcare Hours per week", x="Hours")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek) * 1.6,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+  
+```
+
+```{r}
+childcare.hours %>%
+  ggplot(aes(ChildcareHourPerWeek, fill = Year))+
+  geom_bar()+
+  labs(title = "2023 Childcare Hours per week", x="Hours")+
+  geom_vline(xintercept = mean(childcare.hours$ChildcareHourPerWeek),      # Add line for mean
+             col = "purple",
+             lwd = 1) +
+  annotate("text",                        # Add text for mean
+           x = mean(childcare.hours$ChildcareHourPerWeek) * 1.6,
+           y = mean(childcare.hours$ChildcareHourPerWeek),
+           label = paste("Mean =", round(mean(childcare.hours$ChildcareHourPerWeek),2)),
+           col = "purple",
+           size = 6)+
+  theme_bw()+
+  theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+  
+```

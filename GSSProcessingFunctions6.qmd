@@ -1,0 +1,309 @@
+---
+title: "GSSProcessingFunctions6"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+## Libraries
+
+```{r}
+# install.packages("ggVennDiagram")
+# install.packages("UpSetR")
+library(UpSetR)
+library(ggVennDiagram)
+library(lmtest)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(broom) #Tidy function
+library(stringr)
+library(ggplot2)
+library(purrr)
+library(car) #Levene Test, durbin-watson
+library(bestNormalize) #YeoJohnson
+library(lme4)
+library(lmerTest) #Rsquared in mixed model
+library(MuMIn) #Dredge, AIC, model.sel
+library(ggcorrplot)
+library(gglm) #Diagnostic plots
+library(latex2exp)
+library(cowplot)
+library(glmglrt) #Wald p-values
+library(corrplot)
+library(pscl) #R^2
+library(MASS) #negative binomial, polr
+library(glmnet) #Lasso regression
+library(olsrr) #vif for model.matrices
+library(lmtest) #coeftest
+library(lmPerm)
+library(tibble) #rownames to column and vice versa
+library(RColorBrewer) #Color Palette
+library(gplots) # Heatmap
+```
+
+## Functions
+
+```{r}
+separate.iter <- function(data, col, sep){
+  #Iteratively separates a column col into all its respective parts 
+  var <- rlang::enquo(col)
+  expression <- rlang::quo_get_expr(var)
+  col.iter <- expression %>% as.character()
+
+  separations <- max(str_count(data[[expression]], sep), na.rm = T)
+
+  for (x in 1:separations) {
+    data <- data %>%
+      separate(expression, 
+               into = c(paste0(col.iter, x), col.iter), 
+               sep = ",", extra = "merge")
+  }
+  return(data)
+}
+
+unique_me <- function(x, tolerance_decimal_places=10) {
+  unique(round(x, tolerance_decimal_places))
+}
+
+reciprocal <- function(x) {
+  1/x
+}
+
+tidy.issues <- function(dat) { #TODO Generalize this to allow issue slection
+  tidy.dat <- dat %>% 
+    pivot_longer(all_of(issues), names_to = "Issues", values_to = "Value") %>%
+    # filter(!is.na(Value)) %>%
+    mutate(Value = as.numeric(Value))
+  
+  return(tidy.dat)
+}
+
+issues.extract <- function(dat, issues) {
+  Vote.issues <- dat %>% dplyr::select(all_of(issues)) %>% 
+    tidy.issues()
+  
+  return(Vote.issues)
+}
+
+count.votes <- function(Vote.tidy) {
+  Counts <- Vote.tidy %>%
+    group_by(Issues) %>%
+    summarise(votes = sum(!is.na(Value)))
+  
+  return(Counts)
+}
+
+weight.vote.ranks <- function(Vote.tidy) {
+  numCat <- length(unique(Vote.tidy$Issues))
+  weighted.vote.ranks <- Vote.tidy %>%
+    mutate(WeightInv = (1/Value), WeightExp = exp(-(Value)), Borda=numCat-Value) %>%
+    mutate(WeightExpLn=log(WeightExp), WeightInvLn=log(WeightInv))
+  
+  return(weighted.vote.ranks)
+}
+
+calculate.t.score <- function(tidy.dat, var) {
+  var <- rlang::enquo(var)
+  tidy.dat %>% mutate(`T-Score`= (!!var-mean(!!var))/
+           (sd(!!var)/sqrt(length(!!var))))
+}
+
+summarize.vote.ranks <- function(weighted.vote.ranks, measure) {
+  measure <- rlang::enquo(measure)
+  Counts <- weighted.vote.ranks %>% count.votes()
+  maxVotes <- Counts %>% summarize(max(votes)) %>% unlist() %>% as.numeric()
+  summary <- weighted.vote.ranks %>%
+    filter(!is.na(Value)) %>%
+    #replace(is.na(.),0) %>%
+    group_by(Issues) %>%
+    summarise(WeightedInvSum = sum(WeightInv), 
+              WeightedExpSum = sum(WeightExp), 
+              RankSum = sum(Value),
+              BordaSum = sum(Borda)) %>%
+    left_join(., Counts, by = "Issues") #Add votes column per issue
+  
+  maxBorda <- summary %>% summarize(max(BordaSum)) %>% unlist() %>% as.numeric()
+  
+  summary <- summary %>% 
+    #All defined scores are meant to be ranked in descending order
+    mutate(ExpectedReciprocalScore = WeightedInvSum/votes, 
+           ExpectedExpScore = WeightedExpSum/votes, 
+           ExpectedRank = RankSum/votes,
+           ExpectedRankScore = 1/(ExpectedRank),
+           ExpectedBorda = BordaSum/votes,
+           BordaScore = BordaSum/maxBorda,
+           ExpectedReciprocalScoreRank = 1/(ExpectedReciprocalScore),
+           AverageMeanReciprocalRank = (ExpectedReciprocalScoreRank+ExpectedRank)/2,
+           AverageMeanReciprocalRankScore= (votes/maxVotes)^2*
+             (1/AverageMeanReciprocalRank)) %>% 
+    calculate.t.score(!!measure) %>%
+    arrange(desc(!!measure)) %>%
+    mutate(SummaryRank = row_number()) %>% #Rank by the measure of interest
+    dplyr::select(SummaryRank, Issues, AverageMeanReciprocalRankScore, BordaScore,
+                  ExpectedReciprocalScore, ExpectedRank, ExpectedBorda,
+                  everything())
+    
+  # summary$Issues <- factor(summary$Issues, levels = rev(summary$Issues)) #Defines the order of dot plot.
+
+  return(summary)
+}
+
+summarize.top.n.ranks <- function(summary, weighted.ranks, n=6) {
+  #weighted.ranks = Vote.rank %>% issues.extract(issues) %>% weight.vote.ranks() 
+  topchoices <- summary[1:n,"Issues"] %>% unlist() #Unlist is important to make the tibble (list) into a character vector. We can then use this as the levels input to arrange the ridge plot
+  top.results <- weighted.ranks %>% filter(Issues %in% topchoices & !is.na(Value))
+  top.results$Issues <- factor(top.results$Issues, levels = topchoices)
+  
+  return(top.results)
+}
+
+#https://github.com/wilkelab/cowplot/issues/202
+get_legend_35 <- function(plot) {
+  # return all legend candidates
+  legends <- get_plot_component(plot, "guide-box", return_all = TRUE)
+  # find non-zero legends
+  nonzero <- vapply(legends, \(x) !inherits(x, "zeroGrob"), TRUE)
+  idx <- which(nonzero)
+  # return first non-zero legend if exists, and otherwise first element (which will be a zeroGrob) 
+  if (length(idx) > 0) {
+    return(legends[[idx[1]]])
+  } else {
+    return(legends[[1]])
+  }
+}
+
+dot.plot <- function(summary, var) {
+  var <- rlang::enquo(var)
+  summary$Issues <- factor(summary$Issues)
+  summary <- summary %>% 
+    mutate(Issues = forcats::fct_reorder(Issues, !!var)) #Defines the order of dot plot.
+
+  graph <- summary %>% 
+    ggplot(aes(x = !!var, y = Issues)) + 
+    geom_point(aes(x = !!var, y = Issues, color = `T-Score`, size=votes)) +
+    geom_segment(aes(x = 0, xend = !!var, y = Issues, yend = Issues),  
+                 color = "black", linetype = "solid", alpha=0.5, linewidth = 0.6) + 
+    theme_minimal() +                                   
+    labs(title = "Average score", 
+         x = "Score", y = "Issues", fill = "T-Score") +
+    guides(size = guide_legend(order = 1), color = guide_colorbar(order = 2))+
+    scale_color_gradient(low = "darkblue", high="orange")+
+    theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))
+  
+  return(graph)
+}
+
+
+ridge.plot <- function(top.results, strata) {
+  names <- c(`Mental Health` = "CAPS",
+             `Mentoring/Advisor` = "Advisor",
+             `Childcare/Daycare` = "Daycare",
+             `Healthcare Insurance` = "Health I.")
+  
+  graph <- top.results %>% ggplot(aes(x = Value, fill = Issues))+
+    geom_histogram(color = "black", binwidth = 0.5)+
+    facet_grid(Issues~ ., labeller = labeller(Issues = names))+
+    labs(x = "Rank", y ="Vote counts", fill = "Issues",
+         title = paste0("2023 GSS Poll results: Top 6 concerns (", strata, ")") )+
+    theme_bw()+
+    theme(legend.position = "right", plot.title = element_text(size = 14, face = "bold"))+
+    scale_x_continuous(breaks = seq(1,10))
+  
+  return(graph)
+    
+}
+
+replace.na.val <- function(dat, col, replace, string = FALSE){
+  var <- rlang::enquo(col)
+  expression <- rlang::quo_get_expr(var)
+  
+  if (isFALSE(string))  i <- is.na(dat[,expression])
+  else  i <- dat[,expression] == "NA"
+
+  dat[i,expression] <- replace
+  
+  return(dat)
+}
+
+join.summary.tables <- function() {
+  var <- ls(envir=.GlobalEnv) #Retrieve all named variables
+  strata.cat <- str_extract(var, pattern = "^`summary|^summary\\.(.+)$|`$")
+  #Find strata categories by relying on summary names
+  i <- !is.na(strata.cat)
+  strata.cat <- strata.cat[i] #Remove all NA
+  summaryList <- mget(strata.cat, envir=.GlobalEnv) #Retrieve all summary tables matching the retrieved strata categories
+  strata.cat <- str_extract(strata.cat,
+                            pattern = "^`summary|^summary\\.(.+)$|`$",
+                            group = 1) #Extract strata categories
+  n <- length(strata.cat) #Number of categories (demographic strata)
+
+  for(i in 1:n) {
+    #Name summary tables with corresponding category
+    summarytab <- summaryList[[i]] %>% as_tibble() %>%
+      mutate(Category=strata.cat[i])
+  
+    #Join summary lists
+    if (i==1){
+      joint.summary <- tibble(summarytab)
+    }
+    joint.summary <-
+      full_join(summarytab, joint.summary)
+  }
+ 
+  return(joint.summary) 
+}
+
+pick.end <- function(data, n = 3, type = "top", measure) {
+  measure <- rlang::enquo(measure)
+  expression <- rlang::quo_get_expr(measure)
+  #Required to have a column SummaryRank
+  if (type == "top") {
+    data <- data %>%
+      filter(!!measure <= n)
+  }
+  #In case wanting to retrieve the bottom "bottom" ranks
+  else if (type == "bottom") {
+    numRanks <- length(unique(data[[expression]]))
+    rank <- numRanks-(n-1)
+    data <- data %>%
+      filter(!!measure >= rank)
+  }
+  return(data)
+}
+```
+
+## Statistics
+
+```{r}
+alias.check <- function(model) attributes(alias(model)$Complete)$dimnames[[1]]
+
+estimate2expected.g <- function(model) {
+  require(broom)
+  LI.gaussian <- tidy(model) %>% 
+    arrange(term) %>% 
+    mutate(E.rank.model=estimate+estimate[1]) %>% 
+    dplyr::select(term,E.rank.model, everything())
+  
+  LI.gaussian[1,2] <- LI.gaussian[1,3]
+  
+  return(LI.gaussian)
+} 
+
+intx2modlIntx <- function(model.tidy) {
+  model.tidy <- model.tidy %>% 
+  separate(term, c("term1","term2","term3"), sep = ":") %>% 
+  separate(term2, c("test1", "test2"), sep = "`")
+  
+  model.tidy[model.tidy==""] <- NA 
+  
+  model.tidy <- model.tidy %>% 
+    unite(c(term1, test1, test2, term3),col="Category", sep = ":", na.rm = T)
+  
+  return(model.tidy)
+}
+
+intx2expected.g <- function(model) {
+  estimate2expected.g(model) %>% intx2modlIntx()
+}
+```

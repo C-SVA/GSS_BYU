@@ -1,0 +1,253 @@
+---
+title: "GSS2023RankScoreComparison"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+# Methods
+
+```{r}
+colnames(joint.summary.Borda)[2] <- "Borda"
+colnames(joint.summary.meanRank)[2] <- "Mean Rank"
+colnames(joint.summary.avgMeanRecipScore)[2] <- "Avg mean-reciprocal score"
+colnames(joint.summary.Reciprocal)[2] <- "Reciprocal"
+
+mthd <- full_join(joint.summary.Borda, joint.summary.meanRank,  by = "Issues") %>%
+  full_join(joint.summary.avgMeanRecipScore, by = "Issues") %>%
+  full_join(joint.summary.Reciprocal, by = "Issues") 
+
+mthd <- mthd %>%
+  dplyr::select(Issues, Borda, `Mean Rank`, `Avg mean-reciprocal score`, Reciprocal)
+
+mthd.matrix <- mthd %>% 
+  pivot_longer(-Issues, names_to = "Method", values_to = "Values") %>%
+  pivot_wider(names_from = Issues, values_from = Values) %>%
+  as.data.frame()
+
+
+rownames(mthd.matrix) <- mthd.matrix$Method
+```
+
+## Dendrogram
+
+```{r}
+dist_matrix <- dist(mthd.matrix)
+hclust_result <- hclust(dist_matrix, method = "average")
+plot(hclust_result, main = "Average Linkage Hiearchical clustering",
+     xlab = "Samples", sub = "", ylab = "Height")
+
+```
+
+## Borda vs Mean Rank
+
+Borda and Mean Rank result in same summary ranks.
+
+```{r}
+dist(rbind(mthd$Borda, mthd$`Mean Rank`))
+```
+
+## Method table Top 3
+
+```{r}
+coul <- colorRampPalette(brewer.pal(5, "RdBu"))(25)
+```
+
+### General
+
+```{r}
+top3m <- mthd %>% 
+  filter_at(vars(-Issues), any_vars(. <=3)) %>%
+  column_to_rownames(var = "Issues")
+
+
+
+
+top3m %>% as.matrix() %>% 
+  heatmap.2(scale = "none", 
+                 col = coul,
+                 hclustfun = function(x) hclust(x, method = "average"),
+                 revC = T,
+                 cexRow=0.4, cexCol = 0.5,
+                 srtCol = 45,
+                 key = TRUE,
+                 density.info = "hist",
+                 offsetRow = 0,
+                 margins = c(5, 10),
+                 trace = "none",
+                 keysize = 1.8,
+                 key.title = "Color Key")
+
+```
+
+### Different Rankings
+
+```{r}
+# Different rankings
+all_the_same <- apply(top3m, 1, function(x) all(x == x[1]))
+top3diff <- top3m %>%
+  filter(!all_the_same)
+  
+top3diff %>% as.matrix() %>% 
+  heatmap.2(scale = "none", 
+                 col = coul,
+                 hclustfun = function(x) hclust(x, method = "average"),
+                 revC = T,
+                 cexRow=0.4, cexCol = 0.5,
+                 srtCol = 45,
+                 key = TRUE,
+                 density.info = "hist",
+                 offsetRow = 0,
+                 margins = c(5, 12),
+                 trace = "none",
+                 keysize = 1.8,
+                 key.title = "Color Key")
+
+```
+
+```{r}
+#Top 3 with different rankings
+top3difference <- top3diff %>%
+  arrange(`Avg mean-reciprocal score`) %>%
+  rownames_to_column(var = "Issues") %>%
+  separate(Issues, c("Issues", "Category"), sep = ":", extra = "merge") %>%
+  mutate(Join = paste0(Issues,":",Category))
+
+
+top3difference %>% distinct(Join)
+```
+
+# Ridge Differences
+
+## Average Mean-Reciprocal Score
+
+```{r}
+# Different Vote.mthd.diff using Average Mean reciprocal rank
+Vote.mthd.diff <- weighted.votes.cat.interest %>%
+  filter(Join %in% top3difference$Join) %>%
+  dplyr::select(Issues,Value,Join,Category) %>%
+  left_join(top3difference[,c("Join", "Avg mean-reciprocal score", "Borda")], 
+            by = "Join",) %>%
+  mutate(x = Inf, y = Inf) #Place the rank on the upper right corner
+
+Vote.mthd.diff %>% 
+  ggplot(aes(x = Value, fill = Category))+
+  geom_histogram(color = "black", binwidth = 0.5)+
+  geom_text(aes(x = x, y = y, label = `Avg mean-reciprocal score`),
+            inherit.aes = FALSE,
+            hjust = 1.1,                      # Slightly inside the upper-right corner
+            vjust = 1.1,                      # Slightly inside the upper-right corner
+            color = "purple",
+            size = 3.5)+
+  facet_grid(Category~Issues, scales = "free_y")+
+  labs(x = "Rank", y ="Vote counts", fill = "Categories")+
+  theme_bw()+
+  guides(fill = guide_legend(nrow = 2))+
+  theme(legend.position = "bottom", plot.title = element_text(size = 14, face = "bold"),
+        legend.text = element_text(size = 6), legend.key.size = unit(0.25, "cm"), 
+        legend.title = element_blank(), strip.text.y = element_blank(), 
+        strip.text.x.top = element_text(size = 7),
+        legend.key.spacing.x = unit(0.5, "cm"), legend.justification = c(0.5,1),
+        axis.title.x = element_text(size = 8), axis.title.y = element_text(size = 8),
+        axis.text.y = element_text(size = 5, face = "bold"), axis.text.x = element_text(size=6))+
+  scale_x_continuous(breaks = seq(1,10))
+```
+
+## Borda
+
+```{r}
+# Different Vote.mthd.diff using Borda rank
+Vote.mthd.diff %>%
+  ggplot(aes(x = Value, fill = Category))+
+  geom_histogram(color = "black", binwidth = 0.5)+
+  geom_text(aes(x = x, y = y, label = Borda),
+            inherit.aes = FALSE,
+            hjust = 1.1,                      # Slightly inside the upper-right corner
+            vjust = 1.1,                      # Slightly inside the upper-right corner
+            color = "purple",
+            size = 3.5)+
+  facet_grid(Category~Issues, scales = "free_y")+
+  labs(x = "Rank", y ="Vote counts", fill = "Categories")+
+  theme_bw()+
+  guides(fill = guide_legend(nrow = 2))+
+  theme(legend.position = "bottom", plot.title = element_text(size = 14, face = "bold"),
+        legend.text = element_text(size = 6), legend.key.size = unit(0.25, "cm"), 
+        legend.title = element_blank(), strip.text.y = element_blank(), 
+        strip.text.x.top = element_text(size = 7),
+        legend.key.spacing.x = unit(0.5, "cm"), legend.justification = c(0.5,1),
+        axis.title.x = element_text(size = 8), axis.title.y = element_text(size = 8),
+        axis.text.y = element_text(size = 5, face = "bold"), axis.text.x = element_text(size=6))+
+  scale_x_continuous(breaks = seq(1,10))
+```
+
+# Summary
+
+## Consensus rank
+
+```{r}
+top3m %>% 
+  filter(all_the_same) %>%
+  arrange(Borda) %>%
+  rownames_to_column(var = "Issues") %>%
+  separate(Issues, c("Issues", "Category"), sep = ":", extra = "merge") %>%
+  mutate(Borda = as.character(Borda)) %>%
+  
+  
+  ggplot(aes(x = forcats::fct_infreq(Issues), fill=Category, color=Borda))+
+  geom_bar(size=0.6)+
+  scale_color_manual(values = c("1"="black", "2"="blue", "3"="ivory"))+
+  labs(title = "Top 3 consensus rankings across groups", x = "Concerns", color = "Consensus Rank")+
+  theme_bw()+
+  guides(fill = guide_legend(order = 1), color = guide_legend(order = 2)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_text(size=5.5),
+        legend.key.size = unit(3.5, "mm"),
+        legend.box.just = "top",
+        legend.justification = c(0,1)) #box.just can be top, bottom, left, right
+```
+
+```{r}
+sum(all_the_same)
+```
+
+## Average rank (non consensus)
+
+```{r}
+summaryAvgRank <- top3m %>%
+  filter(!all_the_same) %>%
+  mutate(SummaryAverageRank = (Borda+`Mean Rank`+Reciprocal+`Avg mean-reciprocal score`)/4)%>%
+  mutate(SummaryAverageRank = round(SummaryAverageRank)) %>%
+  dplyr::select(SummaryAverageRank, everything()) %>%
+  mutate(SummaryAverageRank = as.character(SummaryAverageRank)) %>%
+  rownames_to_column(var="Issues") %>% 
+  separate(Issues, c("Issues", "Category"), sep = ":", extra = "merge") 
+
+# names <- summaryAvgRank$SummaryAverageRank %>% unique()
+# n <- names %>% length()
+# coul <- colorRampPalette(brewer.pal(11, "RdBu"))(25)
+# coul <- setNames(coul, names) 
+
+summaryAvgRank %>%
+  ggplot(aes(x = forcats::fct_infreq(Issues), fill=Category, color=SummaryAverageRank))+
+  geom_bar(size=0.6)+
+
+  labs(title = "Top 3 average (rounded) rankings across groups", x = "Concerns", color = "Average Rank")+
+  theme_bw()+
+  guides(fill = guide_legend(order = 1), color = guide_legend(order = 2)) +
+  scale_color_manual(values = c("1"="black", "2"="blue", "3"="lightblue", "4"="ivory"))+
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_text(size=5.5),
+        legend.key.size = unit(3.5, "mm"),
+        legend.box.just = "top",
+        legend.justification = c(0,1)) #box.just can be top, bottom, left, right
+```
+
+```{r}
+summaryAvgRank %>% distinct(SummaryAverageRank)
+```
+
+```{r}
+sum(!all_the_same)
+```

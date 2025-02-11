@@ -1,0 +1,132 @@
+---
+title: "Graphical abstract"
+author: "Sebastian Valencia Amores"
+format: html
+editor: visual
+---
+
+# Categorization
+
+```{r}
+strata <- weighted.votes.cat.interest %>%
+  filter(!is.na(Category)) %>%
+  distinct(Participant, Category) %>%
+  dplyr::select(Participant, Category) %>%
+  mutate(Participant = as.character(Participant))
+
+list <- strata %>%
+  filter(!Category %in% c("GenderMale", "GenderFemale"), !grepl("ParentNo", Category)) %>%
+  pivot_wider(names_from = Category, values_from = Participant) %>%
+  as.list()
+
+list <- lapply(list, unlist) #Transforming a wide tibble whose columns are lists into a list will result in a nested list, so need to unlist each column to unnest the list
+```
+
+```{r}
+UpSetR::upset(fromList(list), order.by = "freq", nsets = 13, nintersects = 20,
+      text.scale = 0.9, mainbar.y.label = NULL)
+```
+
+```{r}
+# Votes not accounted for with selected strata
+# >22 NA Marital Status
+i <- setdiff(Vote.rank.analysis$Participant, strata$Participant)
+Vote.rank.analysis[Vote.rank.analysis$Participant %in% i, ]
+```
+
+# Summary results
+
+```{r}
+weighted.summary <- mthd %>% rename(Join = Issues, BordaSummary = Borda, MeanSummary = `Mean Rank`, `Avg mean-reciprocal score summary` = `Avg mean-reciprocal score`, ReciprocalSummary = Reciprocal) %>%
+  right_join(weighted.votes.cat.interest, by = "Join") %>%
+  filter(`Avg mean-reciprocal score summary` <= 3) %>%
+  mutate(x = Inf, y=Inf)
+```
+
+```{r}
+categories.general <- c("Age40+", "MaritalStatusDivorced/Separated", "GenderPrefer not to say" , "GenderMale" , "GenderFemale")
+
+categories.internationalNo <- c("MaritalStatusDivorced/Separated:InternationalNo", "MaritalStatusMarried:InternationalNo", "MaritalStatusNever married:InternationalNo", "ParentNo:InternationalNo", "ParentYes:InternationalNo", "Year1:InternationalNo")
+
+categories.international <- c("MaritalStatusMarried:InternationalYes", "MaritalStatusNever married:InternationalYes", "ParentNo:InternationalYes", "ParentYes:InternationalYes", "Year1:InternationalYes")
+
+names <- c(`Mental Health` = "CAPS",
+           `Mentoring/Advisor` = "Advisor",
+           `Childcare/Daycare` = "Daycare",
+           `Healthcare Insurance` = "Health I.")
+```
+
+# General Categories
+
+```{r}
+weighted.summary %>% filter(Category %in% categories.general)%>%
+  ggplot(aes(x = Value, fill = Category))+
+      geom_histogram(color = "black", binwidth = 0.5)+
+      facet_grid(Category~Issues, scales = "free_y", labeller = labeller(Issues = names))+
+      labs(x = "Rank", y ="Vote counts", fill = "General Categories")+
+      geom_text(aes(x = x, y = y, label = `Avg mean-reciprocal score summary`),
+              inherit.aes = FALSE,
+              hjust = 1.1,                      # Slightly inside the upper-right corner
+              vjust = 1.1,                      # Slightly inside the upper-right corner
+              color = "purple",
+              size = 3.5)+
+      theme_bw()+
+      theme(legend.position = "bottom", plot.title = element_text(size = 14, face = "bold"),
+       legend.text = element_text(size = 7), legend.key.size = unit(0.35, "cm"),
+       legend.title = element_blank(), strip.text.y = element_blank(), 
+       strip.text.x.top = element_text(size = 10),
+       legend.key.spacing.x = unit(0.5, "cm"),
+       axis.title.x = element_text(size = 8), axis.title.y = element_text(size = 8),
+       axis.text.y = element_text(size = 6, face = "bold"), axis.text.x = element_text(size=6))+
+  scale_x_continuous(breaks = seq(1,10))
+```
+
+# Non international
+
+```{r}
+weighted.summary %>% filter(Category %in% categories.internationalNo)%>%
+  ggplot(aes(x = Value, fill = Category))+
+      geom_histogram(color = "black", binwidth = 0.5)+
+      facet_grid(Category~Issues, scales = "free_y", labeller = labeller(Issues = names))+
+      labs(x = "Rank", y ="Vote counts", fill = "Categories")+
+      geom_text(aes(x = x, y = y, label = `Avg mean-reciprocal score summary`),
+              inherit.aes = FALSE,
+              hjust = 1.1,                      # Slightly inside the upper-right corner
+              vjust = 1.1,                      # Slightly inside the upper-right corner
+              color = "purple",
+              size = 3.5)+
+      theme_bw()+
+      theme(legend.position = "bottom", plot.title = element_text(size = 14, face = "bold"),
+       legend.text = element_text(size = 7), legend.key.size = unit(0.35, "cm"),
+       legend.title = element_blank(), strip.text.y = element_blank(), 
+       strip.text.x.top = element_text(size = 10),
+       legend.key.spacing.x = unit(0.25, "cm"),
+       axis.title.x = element_text(size = 8), axis.title.y = element_text(size = 8),
+       axis.text.y = element_text(size = 6, face = "bold"), axis.text.x = element_text(size=6))+
+  scale_x_continuous(breaks = seq(1,10))
+```
+
+# International
+
+```{r}
+weighted.summary %>% filter(Category %in% categories.international)%>%
+  ggplot(aes(x = Value, fill = Category))+
+      geom_histogram(color = "black", binwidth = 0.5)+
+      facet_grid(Category~Issues, scales = "free_y", labeller = labeller(Issues = names))+
+      labs(x = "Rank", y ="Vote counts", fill = "International Categories")+
+      geom_text(aes(x = x, y = y, label = `Avg mean-reciprocal score summary`),
+              inherit.aes = FALSE,
+              hjust = 1.1,                      # Slightly inside the upper-right corner
+              vjust = 1.1,                      # Slightly inside the upper-right corner
+              color = "purple",
+              size = 3.5)+
+      theme_bw()+
+      theme(legend.position = "bottom", plot.title = element_text(size = 14, face = "bold"),
+       legend.text = element_text(size = 7), legend.key.size = unit(0.35, "cm"),
+       legend.title = element_blank(), strip.text.y = element_blank(), 
+       strip.text.x.top = element_text(size = 10),
+       legend.key.spacing.x = unit(0.25, "cm"),
+       axis.title.x = element_text(size = 8), axis.title.y = element_text(size = 8),
+       axis.text.y = element_text(size = 6, face = "bold"), axis.text.x = element_text(size=6))+
+  scale_x_continuous(breaks = seq(1,10))
+```
