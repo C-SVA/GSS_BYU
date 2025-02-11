@@ -1,5 +1,7 @@
 # GSS 2023 Survey Data Analysis
-Series of qmd files and raw data. Running the qmd files in the following order ensures proper variable initialization:
+PDF: Analysis Report.
+
+Series of qmd files and raw data. Running the qmd files in the following order ensures proper variable initialization. (Steps 4,5,6,7 are interchangeable).
 1. GSSProcessingFunctions6.qmd
 2. GSSDataProcessing3.qmd
 3. GSS2023SurveyDemographics3.qmd
