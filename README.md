@@ -1,5 +1,5 @@
 # GSS 2023 Survey Data Analysis
-PDF: Analysis Report.
+GSS_2023_Survey_Analysis_Centroid_score.pdf: Analysis Report.
 
 Series of qmd files and raw data. Running the qmd files in the following order ensures proper variable initialization. (Steps 4,5,6,7 are interchangeable).
 1. GSSProcessingFunctions6.qmd
